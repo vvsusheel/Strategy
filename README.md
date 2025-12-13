@@ -1,0 +1,1 @@
+This is a automated trading/investment strategy for Nifty 500 stocks.
