@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Returns Projection Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #00aaff;
+            --background: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #888888;
+            --border-color: #e0e0e0;
+            --success: #28a745;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--background);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 24px;
+            max-width: 1000px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            flex: 1;
+            min-width: 350px;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 20px;
+            color: var(--text-main);
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--primary);
+        }
+
+        .input-prefix {
+            padding: 12px 16px;
+            background: #f9f9f9;
+            color: var(--text-muted);
+            font-size: 14px;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .input-suffix {
+            padding: 12px 16px;
+            color: var(--success);
+            font-weight: bold;
+            background: #f9f9f9;
+            border-left: 1px solid var(--border-color);
+        }
+
+        input[type="number"] {
+            flex: 1;
+            border: none;
+            padding: 12px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        .btn-calc {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-calc:hover {
+            background-color: #0099e6;
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 24px;
+        }
+
+        .results-section.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .result-value {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text-main);
+        }
+
+        .highlight-value {
+            color: var(--primary);
+            font-size: 24px;
+        }
+
+        .chart-container {
+            margin-top: 30px;
+            height: 250px;
+            width: 100%;
+        }
+
+        .error-msg {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="card">
+            <h2>Assumptions</h2>
+
+            <!-- Fetch Option Box -->
+            <div
+                style="background: #f9f9f9; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 24px;">
+                <label
+                    style="display: block; font-size: 14px; margin-bottom: 8px; color: var(--text-main); font-weight: 500;">Auto-Fetch
+                    Stock Data (Optional)</label>
+                <div style="display: flex; gap: 10px;">
+                    <div class="input-wrapper" style="flex: 1;">
+                        <span class="input-prefix">🏢</span>
+                        <input type="text" id="ticker_symbol" placeholder="e.g. AAPL (Press Enter)"
+                            style="text-transform: uppercase; width: 100%; padding: 16px; font-size: 16px;">
+                    </div>
+                </div>
+                <div id="fetch-msg" style="font-size: 12px; margin-top: 8px;">Requires Internet Connection. If it fails,
+                    enter values manually below.</div>
+            </div>
+
+            <form id="calc-form">
+                <div class="form-group">
+                    <label>Current Share Price</label>
+                    <div class="input-wrapper">
+                        <span class="input-prefix">$</span>
+                        <input type="number" id="current_price" step="any" placeholder="Enter current price" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>EPS (TTM)</label>
+                    <div class="input-wrapper">
+                        <span class="input-prefix">$</span>
+                        <input type="number" id="eps" step="any" placeholder="Enter TTM EPS" required>
+                        <span class="input-suffix">✓</span>
+                    </div>
+                    <div class="form-hint">The Earnings Per Share over the last 12 months.</div>
+                </div>
+
+                <!-- Current PE Ratio Display -->
+                <div class="form-group"
+                    style="background: #eef2f5; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <label style="margin: 0;">Current PE Ratio</label>
+                    <strong id="current_pe_display" style="font-size: 16px; color: var(--primary);">--</strong>
+                </div>
+
+                <div class="form-group">
+                    <label>EPS Growth Rate</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="eps_growth_rate" step="any" placeholder="Enter growth rate" required>
+                        <span class="input-suffix">%</span>
+                    </div>
+                    <div class="form-hint">Your assumption of the company's expected yearly EPS growth rate as a
+                        percentage (e.g., 10 for 10% per year).</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Appropriate PE Multiple</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="pe_multiple" step="any" placeholder="Enter multiple" required>
+                        <span class="input-suffix">✓</span>
+                    </div>
+                    <div class="form-hint">The PE ratio you consider appropriate for the stock to trade at in the
+                        future.</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Time Period (Years)</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="time_period" value="5" step="1" min="1" required>
+                        <span class="input-suffix">Yrs</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Desired Return</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="desired_return" step="any" placeholder="15" required>
+                        <span class="input-suffix">%</span>
+                    </div>
+                    <div class="form-hint">This is the annualized return you aim to achieve from the stock. The
+                        calculator will determine the price you need to pay to attain this return.</div>
+                </div>
+
+                <button type="submit" class="btn-calc">Calculate Projection</button>
+                <div id="error-message" class="error-msg"></div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>5-Year Projection</h2>
+            <div id="results-placeholder" style="color: var(--text-muted); font-size: 14px;">
+                Fill out the assumptions and click "Calculate Projection" to see the results.
+            </div>
+
+            <div id="results-container" class="results-section">
+                <div class="result-item">
+                    <span class="result-label">Future EPS</span>
+                    <span class="result-value" id="res_future_eps">$0.00</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Future Share Price (<span id="res_year">5</span>-Year)</span>
+                    <span class="result-value" id="res_future_price">$0.00</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Projected CAGR</span>
+                    <span class="result-value" id="res_cagr" style="color: var(--success);">0.00%</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Buy Price (for Desired Return)</span>
+                    <span class="result-value" id="res_buy_price" style="color: var(--primary);">$0.00</span>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="projectionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let myChart = null;
+
+        const priceInput = document.getElementById('current_price');
+        const epsInput = document.getElementById('eps');
+        const peDisplay = document.getElementById('current_pe_display');
+
+        function updateCurrentPE() {
+            const price = parseFloat(priceInput.value);
+            const eps = parseFloat(epsInput.value);
+            if (!isNaN(price) && !isNaN(eps) && eps > 0) {
+                const pe = price / eps;
+                peDisplay.innerText = pe.toFixed(2);
+            } else {
+                peDisplay.innerText = '--';
+            }
+        }
+
+        priceInput.addEventListener('input', updateCurrentPE);
+        epsInput.addEventListener('input', updateCurrentPE);
+
+        const tickerInput = document.getElementById('ticker_symbol');
+
+        tickerInput.addEventListener('keydown', async function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent form submission if it's inside a form
+
+                const ticker = tickerInput.value.toUpperCase();
+                const fetchMsg = document.getElementById('fetch-msg');
+
+                if (!ticker) {
+                    fetchMsg.innerText = 'Please enter a ticker symbol first.';
+                    fetchMsg.style.color = '#dc3545';
+                    return;
+                }
+
+                tickerInput.disabled = true;
+                fetchMsg.innerText = 'Connecting to Yahoo Finance...';
+                fetchMsg.style.color = 'var(--text-muted)';
+
+                try {
+                    const response = await fetch(`/fetch_stock_data?ticker=${ticker}`);
+                    const result = await response.json();
+
+                    if (result.success) {
+                        document.getElementById('current_price').value = result.current_price;
+                        document.getElementById('eps').value = result.eps;
+                        updateCurrentPE();
+                        fetchMsg.innerHTML = `<span style="color: var(--success); font-weight: bold;">✓ Successfully fetched data for ${ticker}!</span>`;
+                    } else {
+                        fetchMsg.innerText = result.error;
+                        fetchMsg.style.color = '#dc3545';
+                    }
+                } catch (error) {
+                    fetchMsg.innerText = 'Failed to connect. Please enter manually.';
+                    fetchMsg.style.color = '#dc3545';
+                } finally {
+                    tickerInput.disabled = false;
+                    tickerInput.focus();
+                }
+            }
+        });
+
+        document.getElementById('calc-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const data = {
+                current_price: document.getElementById('current_price').value,
+                eps: document.getElementById('eps').value,
+                eps_growth_rate: document.getElementById('eps_growth_rate').value,
+                pe_multiple: document.getElementById('pe_multiple').value,
+                time_period: document.getElementById('time_period').value,
+                desired_return: document.getElementById('desired_return').value
+            };
+
+            try {
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                const errorElement = document.getElementById('error-message');
+                const placeholder = document.getElementById('results-placeholder');
+                const resultsContainer = document.getElementById('results-container');
+
+                if (result.success) {
+                    errorElement.style.display = 'none';
+                    placeholder.style.display = 'none';
+
+                    document.getElementById('res_future_eps').innerText = '$' + result.future_eps.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                    document.getElementById('res_future_price').innerText = '$' + result.future_price.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                    document.getElementById('res_cagr').innerText = result.cagr + '%';
+                    document.getElementById('res_buy_price').innerText = '$' + result.buy_price.toLocaleString('en-US', { minimumFractionDigits: 2 });
+
+                    // Update year title based on actual input
+                    document.querySelector('h2').innerText = `${result.time_period}-Year Projection`;
+                    document.getElementById('res_year').innerText = result.time_period;
+
+                    resultsContainer.classList.add('active');
+
+                    updateChart(result.start_price, result.end_price, result.time_period);
+                } else {
+                    errorElement.innerText = result.error;
+                    errorElement.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('error-message').innerText = 'An error occurred while calculating.';
+                document.getElementById('error-message').style.display = 'block';
+            }
+        });
+
+        function updateChart(startPrice, endPrice, years) {
+            const ctx = document.getElementById('projectionChart').getContext('2d');
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            const labels = [];
+            const dataPoints = [];
+
+            // Calculate the straight line yearly increment
+            const yearlyIncrement = (endPrice - startPrice) / years;
+
+            for (let i = 0; i <= years; i++) {
+                labels.push(`Year ${i}`);
+                dataPoints.push(startPrice + (yearlyIncrement * i));
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Share Price Projection',
+                        data: dataPoints,
+                        borderColor: '#00aaff',
+                        backgroundColor: 'rgba(0, 170, 255, 0.1)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#00aaff',
+                        pointRadius: 5,
+                        fill: true,
+                        tension: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function (value) { return '$' + value; }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) { return '$' + context.parsed.y.toFixed(2); }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+
+</body>
+
+</html>
